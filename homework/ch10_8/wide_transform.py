@@ -1,52 +1,46 @@
-from pyspark.sql.functions import col
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import broadcast, count
 import time
 
 spark = SparkSession \
         .builder \
-        .appName('wide_transform') \
-        .config('spark.sql.adaptive.enabled', 'False') \
+        .appName('wide_transform.py') \
         .config('spark.executor.memory', '2g') \
         .config('spark.executor.instances', '3') \
         .config('spark.executor.cores', '2') \
+        .config('spark.sql.adaptive.enabled', 'false') \
         .getOrCreate()
 
 print(f'spark application start')
+job_skills_path = 'hdfs:///home/spark/sample/linkedin_jobs/jobs/job_skills.csv'
+job_skills_schema = 'job_id LONG, skill_abr STRING'
+skills_path = 'hdfs:///home/spark/sample/linkedin_jobs/mappings/skills.csv'
+skills_schema = 'skill_abr STRING, skill_name STRING'
 
-jobskill_path = 'hdfs:///home/spark/sample/linkedin_jobs/jobs/job_skills.csv'
-skill_path = 'hdfs:///home/spark/sample/linkedin_jobs/mappings/skills.csv'
-
-
-jobskill_schema = 'job_id             LONG, ' \
-                  'skill_abr          STRING'
-
-skill_schema = 'skill_abr          STRING,' \
-               'skill_name         STRING'
-               
-
-# postings Load
-jobskill_df = spark.read \
+# job_skills load
+job_skills_df = spark.read \
                  .option('header','true') \
-                 .option('multiLine','true') \
-                 .schema(jobskill_schema) \
-                 .csv(jobskill_path)
+                 .schema(job_skills_schema) \
+                 .csv(job_skills_path)
 
-skill_df = spark.read \
+print(f'job_skills load 완료')
+
+# skills load
+skills_df = spark.read \
                  .option('header','true') \
-                 .option('multiLine','true') \
-                 .schema(skill_schema) \
-                 .csv(skill_path)
+                 .schema(skills_schema) \
+                 .csv(skills_path)
 
-result_df = jobskill_df \
-    .join(broadcast(skill_df), on='skill_abr', how='inner') \
+print(f'skills load 완료')
+
+cnt_per_skills_df = job_skills_df.join(
+    other=broadcast(skills_df),
+    on='skill_abr',
+    how='inner'
+).select('job_id', 'skill_name') \
     .groupBy('skill_name') \
     .agg(count('job_id').alias('job_count')) \
-    .orderBy(col('job_count').desc())
+    .sort('job_count', ascending=False)
 
-result_df.persist()
-result_count = result_df.count()
-
-print(f'result count: {result_count}')
-
+print(cnt_per_skills_df.count())
 time.sleep(1200)
