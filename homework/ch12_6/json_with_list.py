@@ -39,7 +39,7 @@ def for_each_batch_func(df: DataFrame, epoch_id):
                                  .selectExpr('name',
                                              'address.*',
                                              'CAST(age AS INT) AS age ',
-                                             'hobbies.*')
+                                             'hobbies')
     print(f'json_to_col_df.show()')
     json_to_col_df.show(truncate=False)
 
