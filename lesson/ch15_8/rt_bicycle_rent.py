@@ -161,7 +161,7 @@ class RtBicycleRent(BaseStreamApp):
             processed_df.coalesce(1).write \
                 .format("parquet") \
                 .mode('append') \
-                .option("path", "s3a://datalake-spark-sink/lesson/bicycle_rent_info") \
+                .option("path", "s3a://datalaek-spark-sink-rj/lesson/bicycle_rent_info") \
                 .partitionBy("ymd", "hh") \
                 .save()
 
